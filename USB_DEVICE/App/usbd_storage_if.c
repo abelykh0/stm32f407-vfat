@@ -22,7 +22,8 @@
 #include "usbd_storage_if.h"
 
 /* USER CODE BEGIN INCLUDE */
-
+#include "littlefs_driver.h"
+#include "mimic_fat.h"         // FAT emulation
 /* USER CODE END INCLUDE */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -31,7 +32,8 @@
 
 /* USER CODE BEGIN PV */
 /* Private variables ---------------------------------------------------------*/
-
+static lfs_t *lfs;
+static struct lfs_config *cfg;
 /* USER CODE END PV */
 
 /** @addtogroup STM32_USB_OTG_DEVICE_LIBRARY
@@ -178,9 +180,8 @@ USBD_StorageTypeDef USBD_Storage_Interface_fops_HS =
 int8_t STORAGE_Init_HS(uint8_t lun)
 {
   /* USER CODE BEGIN 9 */
-  UNUSED(lun);
-
-  return (USBD_OK);
+	//littlefs_driver_init(&lfs, &cfg);
+    return 0;
   /* USER CODE END 9 */
 }
 
@@ -194,11 +195,9 @@ int8_t STORAGE_Init_HS(uint8_t lun)
 int8_t STORAGE_GetCapacity_HS(uint8_t lun, uint32_t *block_num, uint16_t *block_size)
 {
   /* USER CODE BEGIN 10 */
-  UNUSED(lun);
-
-  *block_num  = STORAGE_BLK_NBR;
-  *block_size = STORAGE_BLK_SIZ;
-  return (USBD_OK);
+    *block_size = 512;  // USB MSC standard sector size
+    *block_num  = mimic_fat_total_sector_size(); // total sectors exposed to host
+    return 0;
   /* USER CODE END 10 */
 }
 
@@ -239,12 +238,11 @@ int8_t STORAGE_IsWriteProtected_HS(uint8_t lun)
 int8_t STORAGE_Read_HS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
 {
   /* USER CODE BEGIN 13 */
-  UNUSED(lun);
-  UNUSED(buf);
-  UNUSED(blk_addr);
-  UNUSED(blk_len);
-
-  return (USBD_OK);
+    for (uint16_t i = 0; i < blk_len; i++)
+    {
+    	mimic_fat_read(lun, blk_addr + i, buf + i * 512, 512);
+    }
+    return 0;
   /* USER CODE END 13 */
 }
 
@@ -259,12 +257,11 @@ int8_t STORAGE_Read_HS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t bl
 int8_t STORAGE_Write_HS(uint8_t lun, uint8_t *buf, uint32_t blk_addr, uint16_t blk_len)
 {
   /* USER CODE BEGIN 14 */
-  UNUSED(lun);
-  UNUSED(buf);
-  UNUSED(blk_addr);
-  UNUSED(blk_len);
-
-  return (USBD_OK);
+    for(uint16_t i = 0; i < blk_len; i++)
+    {
+    	 mimic_fat_write(lun, blk_addr + i, buf + i * 512, 512);
+    }
+    return 0;
   /* USER CODE END 14 */
 }
 
