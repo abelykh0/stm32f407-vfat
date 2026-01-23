@@ -1,127 +1,117 @@
-/* littlefs_driver.c
- *
- * STM32F407 internal flash LittleFS block device
- * Flash region: 0x08030000 – 0x080FFFFF (1 MB)
- * HAL-only implementation
- */
-
-#include "lfs.h"
+#include "littlefs_driver.h"
 #include "stm32f4xx_hal.h"
 #include <string.h>
+#include <stdbool.h>
 
-#define FLASH_START_ADDR  0x08030000
-#define FLASH_END_ADDR    0x080FFFFF
-#define FLASH_SIZE        (FLASH_END_ADDR - FLASH_START_ADDR + 1)
-#define LFS_BLOCK_SIZE    4096     // align with STM32F4 flash sectors
-#define LFS_CACHE_SIZE    512
-#define LFS_LOOKAHEAD     16
+/* ================= Flash layout ================= */
+/* STM32F407 sectors:
+   6..11 = 128KB each → 0x08040000 – 0x080FFFFF */
 
-static lfs_t lfs_global;
-static struct lfs_config lfs_cfg_global;
+#define LFS_FLASH_START   0x08040000UL   /* Sector 6 */
+#define LFS_FLASH_END     0x08100000UL   /* End of 1MB */
+#define LFS_BLOCK_SIZE    (128 * 1024)   /* MUST match sector size */
+#define LFS_BLOCK_COUNT   ((LFS_FLASH_END - LFS_FLASH_START) / LFS_BLOCK_SIZE)
 
-// --- LittleFS block device callbacks ---
+/* ================= Static instances ================= */
 
-static int lfs_flash_read(const struct lfs_config *c, lfs_block_t block,
-                          lfs_off_t off, void *buffer, lfs_size_t size)
+static lfs_t lfs_inst;
+static struct lfs_config cfg_inst;
+
+lfs_t *lfs = &lfs_inst;
+struct lfs_config *cfg = &cfg_inst;
+
+/* ================= Helpers ================= */
+
+static uint32_t block_to_sector(lfs_block_t block)
 {
-    uint8_t *addr = (uint8_t *)(FLASH_START_ADDR + block * c->block_size + off);
-    memcpy(buffer, addr, size);
+    /* sectors 6..11 */
+    return FLASH_SECTOR_6 + block;
+}
+
+/* ================= Flash callbacks ================= */
+
+static int flash_read(const struct lfs_config *c,
+                      lfs_block_t block, lfs_off_t off,
+                      void *buffer, lfs_size_t size)
+{
+    uint32_t addr = LFS_FLASH_START +
+                    (block * c->block_size) + off;
+    memcpy(buffer, (const void *)addr, size);
     return 0;
 }
 
-static int lfs_flash_prog(const struct lfs_config *c, lfs_block_t block,
-                          lfs_off_t off, const void *buffer, lfs_size_t size)
+static int flash_prog(const struct lfs_config *c,
+                      lfs_block_t block, lfs_off_t off,
+                      const void *buffer, lfs_size_t size)
 {
-    uint32_t addr = FLASH_START_ADDR + block * c->block_size + off;
-    const uint8_t *buf8 = (const uint8_t *)buffer;
+    uint32_t addr = LFS_FLASH_START +
+                    (block * c->block_size) + off;
 
     HAL_FLASH_Unlock();
-    __disable_irq();
 
-    // Program 32-bit words
-    for (uint32_t i = 0; i < size; i += 4)
-    {
-        uint32_t data = *((uint32_t *)(buf8 + i));
-        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD, addr + i, data) != HAL_OK)
-        {
-            __enable_irq();
+    for (uint32_t i = 0; i < size; i += 4) {
+        uint32_t data;
+        memcpy(&data, (const uint8_t *)buffer + i, 4);
+
+        if (HAL_FLASH_Program(FLASH_TYPEPROGRAM_WORD,
+                              addr + i, data) != HAL_OK) {
             HAL_FLASH_Lock();
             return -1;
         }
     }
 
-    __enable_irq();
     HAL_FLASH_Lock();
     return 0;
 }
 
-static int lfs_flash_erase(const struct lfs_config *c, lfs_block_t block)
+static int flash_erase(const struct lfs_config *c, lfs_block_t block)
 {
-    uint32_t sector_addr = FLASH_START_ADDR + block * c->block_size;
+    FLASH_EraseInitTypeDef erase = {0};
+    uint32_t err;
 
-    // Determine STM32F407 sector number
-    uint32_t sector = 0;
-
-    if (sector_addr < 0x08040000) sector = 3;
-    else if (sector_addr < 0x08060000) sector = 4;
-    else if (sector_addr < 0x08080000) sector = 5;
-    else if (sector_addr < 0x080A0000) sector = 6;
-    else if (sector_addr < 0x080C0000) sector = 7;
-    else if (sector_addr < 0x080E0000) sector = 8;
-    else sector = 9;
-    // Only one sector at a time
-    FLASH_EraseInitTypeDef erase_init = {0};
-    uint32_t sector_error = 0;
-
-    erase_init.TypeErase = FLASH_TYPEERASE_SECTORS;
-    erase_init.Sector = sector;
-    erase_init.NbSectors = 1;
-    erase_init.VoltageRange = FLASH_VOLTAGE_RANGE_3;
+    erase.TypeErase    = FLASH_TYPEERASE_SECTORS;
+    erase.Sector       = block_to_sector(block);
+    erase.NbSectors    = 1;
+    erase.VoltageRange = FLASH_VOLTAGE_RANGE_3;
 
     HAL_FLASH_Unlock();
-    __disable_irq();
-
-    if (HAL_FLASHEx_Erase(&erase_init, &sector_error) != HAL_OK)
-    {
-        __enable_irq();
-        HAL_FLASH_Lock();
-        return -1;
-    }
-
-    __enable_irq();
+    HAL_StatusTypeDef st = HAL_FLASHEx_Erase(&erase, &err);
     HAL_FLASH_Lock();
+
+    return (st == HAL_OK) ? 0 : -1;
+}
+
+static int flash_sync(const struct lfs_config *c)
+{
+    (void)c;
     return 0;
 }
 
-static int lfs_flash_sync(const struct lfs_config *c)
+/* ================= Public init ================= */
+
+void littlefs_driver_init(lfs_t **out_lfs,
+                          struct lfs_config **out_cfg)
 {
-    return 0; // Nothing needed for internal flash
-}
+    memset(cfg, 0, sizeof(*cfg));
 
-// --- Public API ---
+    cfg->read  = flash_read;
+    cfg->prog  = flash_prog;
+    cfg->erase = flash_erase;
+    cfg->sync  = flash_sync;
 
-void littlefs_driver_init(lfs_t **lfs_out, struct lfs_config **cfg_out)
-{
-    memset(&lfs_global, 0, sizeof(lfs_global));
-    memset(&lfs_cfg_global, 0, sizeof(lfs_cfg_global));
+    cfg->block_size      = LFS_BLOCK_SIZE;
+    cfg->block_count     = LFS_BLOCK_COUNT;
+    cfg->read_size       = 16;
+    cfg->prog_size       = 4;
+    cfg->cache_size      = 16;
+    cfg->lookahead_size  = 16;
+    cfg->block_cycles    = 500;
 
-    lfs_cfg_global.read  = lfs_flash_read;
-    lfs_cfg_global.prog  = lfs_flash_prog;
-    lfs_cfg_global.erase = lfs_flash_erase;
-    lfs_cfg_global.sync  = lfs_flash_sync;
-
-    lfs_cfg_global.block_size = LFS_BLOCK_SIZE;
-    lfs_cfg_global.block_count = FLASH_SIZE / LFS_BLOCK_SIZE;
-    lfs_cfg_global.cache_size = LFS_CACHE_SIZE;
-    lfs_cfg_global.lookahead_size = LFS_LOOKAHEAD;
-
-    *lfs_out = &lfs_global;
-    *cfg_out = &lfs_cfg_global;
-
-    // Try to mount, if fails format
-    if (lfs_mount(&lfs_global, &lfs_cfg_global) != 0)
-    {
-        lfs_format(&lfs_global, &lfs_cfg_global);
-        lfs_mount(&lfs_global, &lfs_cfg_global);
+    if (lfs_mount(lfs, cfg) != 0) {
+        lfs_format(lfs, cfg);
+        lfs_mount(lfs, cfg);
     }
+
+    if (out_lfs) *out_lfs = lfs;
+    if (out_cfg) *out_cfg = cfg;
 }

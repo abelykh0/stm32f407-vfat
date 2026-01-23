@@ -45,6 +45,9 @@ typedef struct {
 
 #define DISK_SECTOR_SIZE   512
 
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 void mimic_fat_init(const struct lfs_config *c);
 size_t mimic_fat_total_sector_size(void);
@@ -54,5 +57,9 @@ void mimic_fat_read(uint8_t lun, uint32_t sector, void *buffer, uint32_t bufsize
 void mimic_fat_write(uint8_t lun, uint32_t sector, void *buffer, uint32_t bufsize);
 bool mimic_fat_usb_device_is_enabled(void);
 void mimic_fat_update_usb_device_is_enabled(bool enable);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif
