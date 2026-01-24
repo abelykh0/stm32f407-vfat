@@ -15,6 +15,7 @@ extern "C" void setup()
 {
 	littlefs_driver_init(&lfs, &cfg);
 	mimic_fat_init(cfg);
+	mimic_fat_create_cache();
 
 	MX_USB_DEVICE_Init();
 }
