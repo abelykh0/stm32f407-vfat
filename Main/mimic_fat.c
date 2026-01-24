@@ -91,10 +91,12 @@ static uint8_t fat_disk_image[1][DISK_SECTOR_SIZE] = {
 static lfs_t real_filesystem;
 static bool usb_device_is_enabled = false;
 
-static lfs_file_t fat_cache;
+lfs_file_t fat_cache;
 
 void mimic_fat_init(const struct lfs_config *c) {
     littlefs_lfs_config = c;
+
+    int err = lfs_file_open(&real_filesystem, &fat_cache, ".mimic/FAT", LFS_O_RDWR);
 }
 
 bool mimic_fat_usb_device_is_enabled(void) {
