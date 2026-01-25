@@ -8,11 +8,12 @@
 #include "usbd_hid.h"
 #include "usbd_cdc_if.h"
 
-#define HID_CLASS_ID 0
-#define CDC_CLASS_ID 1
+#define CDC_CLASS_ID 0
+#define HID_CLASS_ID 1
 
 USBD_HandleTypeDef hUsbDeviceFS;
 static uint8_t last_report[8];
+static bool receivedCDC = false;
 extern "C" void USB_DEVICE_Init();
 
 uint8_t cdc_ep[3] = { CDC_IN_EP, CDC_OUT_EP, CDC_CMD_EP };
@@ -75,6 +76,28 @@ extern "C" void setup()
 
 extern "C" void loop()
 {
+	if (hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED)
+	{
+		const char msg[] = "Hello\n";
+		CDC_Transmit_FS((uint8_t*)msg, sizeof(msg)-1);  // send "Hello\r"
+	}
+
+	if (receivedCDC)
+	{
+		receivedCDC = false;
+
+		// --- Send HID ---
+		uint8_t report[8] = {0};
+		report[2] = 0x04; // 'A' key
+		USBD_HID_SendReport(&hUsbDeviceFS, report, sizeof(report), HID_CLASS_ID);
+	}
+
+	HAL_Delay(1000);  // wait 1 second
+}
+
+extern "C" void OnCdcReceive(uint8_t* Buf, uint32_t Len)
+{
+	receivedCDC = true;
 }
 
 extern "C" void USB_DEVICE_Init()

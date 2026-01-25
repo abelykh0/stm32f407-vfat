@@ -13,7 +13,7 @@
 #define USBD_CMPSIT_ACTIVATE_HID   1U
 #define USBD_CMPSIT_ACTIVATE_CDC   1U
 
-#define HID_EPIN_ADDR              0x82
+#define HID_EPIN_ADDR              0x83
 
 #define USBD_COMPOSITE_USE_IAD       1U
 
