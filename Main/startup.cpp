@@ -1,10 +1,12 @@
 #include "startup.h"
 #include "stm32f4xx_hal.h"
 #include "tim.h"
-#include "usbh_hid.h"
 #include "usb_host.h"
+#include "usbh_hid.h"
+#include "usbd_conf.h"
+#include "usbd_desc.h"
 #include "usbd_hid.h"
-#include "usbd_cdc.h"
+#include "usbd_cdc_if.h"
 
 #define HID_CLASS_ID 0
 #define CDC_CLASS_ID 1
@@ -83,27 +85,21 @@ extern "C" void USB_DEVICE_Init()
 	}
 
 	// CDC
-	//if (USBD_CDC_RegisterInterface(&hUsbDeviceFS, &USBD_Interface_fops_FS) != USBD_OK)
-	//{
-	//	Error_Handler();
-	//}
+	if (USBD_CDC_RegisterInterface(&hUsbDeviceFS, &USBD_Interface_fops_FS) != USBD_OK)
+	{
+		Error_Handler();
+	}
 	if (USBD_RegisterClassComposite(&hUsbDeviceFS, &USBD_CDC, CLASS_TYPE_CDC, cdc_ep) != USBD_OK)
 	{
 		Error_Handler();
 	}
 
-	/*
 	// HID
-	if (USBD_HID_RegisterInterface(&hUsbDeviceFS, &USBD_HID_fops_FS) != USBD_OK)
-	{
-		Error_Handler();
-	}
-	if (USBD_RegisterClassComposite(&hUsbDeviceFS, &USBD_HID, CLASS_TYPE_HID, video_ep) != USBD_OK)
+	if (USBD_RegisterClassComposite(&hUsbDeviceFS, &USBD_HID, CLASS_TYPE_HID, hid_ep) != USBD_OK)
 	{
 		Error_Handler();
 	}
 
-*/
 	if (USBD_Start(&hUsbDeviceFS) != USBD_OK)
 	{
 		Error_Handler();
