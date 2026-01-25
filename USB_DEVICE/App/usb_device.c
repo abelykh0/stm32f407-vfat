@@ -23,8 +23,7 @@
 #include "usb_device.h"
 #include "usbd_core.h"
 #include "usbd_desc.h"
-#include "usbd_msc.h"
-#include "usbd_storage_if.h"
+#include "usbd_hid.h"
 
 /* USER CODE BEGIN Includes */
 
@@ -41,7 +40,7 @@
 /* USER CODE END PFP */
 
 /* USB Device Core handle declaration. */
-USBD_HandleTypeDef hUsbDeviceHS;
+USBD_HandleTypeDef hUsbDeviceFS;
 
 /*
  * -- Insert your variables declaration here --
@@ -68,19 +67,15 @@ void MX_USB_DEVICE_Init(void)
   /* USER CODE END USB_DEVICE_Init_PreTreatment */
 
   /* Init Device Library, add supported class and start the library. */
-  if (USBD_Init(&hUsbDeviceHS, &HS_Desc, DEVICE_HS) != USBD_OK)
+  if (USBD_Init(&hUsbDeviceFS, &FS_Desc, DEVICE_FS) != USBD_OK)
   {
     Error_Handler();
   }
-  if (USBD_RegisterClass(&hUsbDeviceHS, &USBD_MSC) != USBD_OK)
+  if (USBD_RegisterClass(&hUsbDeviceFS, &USBD_HID) != USBD_OK)
   {
     Error_Handler();
   }
-  if (USBD_MSC_RegisterStorage(&hUsbDeviceHS, &USBD_Storage_Interface_fops_HS) != USBD_OK)
-  {
-    Error_Handler();
-  }
-  if (USBD_Start(&hUsbDeviceHS) != USBD_OK)
+  if (USBD_Start(&hUsbDeviceFS) != USBD_OK)
   {
     Error_Handler();
   }
