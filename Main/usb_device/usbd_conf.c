@@ -226,15 +226,17 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev)
 	  hpcd_USB_OTG_FS.pData = pdev;
 	  pdev->pData = &hpcd_USB_OTG_FS;
 
-	  //MX_USB_OTG_FS_PCD_Init();
-/*
-	  // Max 0x400 words (4 kB)
-	  HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_HS,    0x250);  // RX
-	  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 0, 0x20);   // EP0
-	  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 1, 0x10);   // CDC Interrupt
-	  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 2, 0x80);   // CDC Bulk
-	  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_HS, 3, 0x100);  // UVC ISO
-*/
+	  if (HAL_PCD_Init(&hpcd_USB_OTG_FS) != HAL_OK)
+      {
+		Error_Handler( );
+	  }
+
+	  // Max 0x140 words (1,280 bytes)
+	  HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_FS, 0x80);
+	  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 0, 0x10); // EP0
+	  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x60); // CDC IN
+	  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 2, 0x08); // HID IN
+
 	  HAL_NVIC_SetPriority(OTG_FS_IRQn, 5, 0);
 	  HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
   }

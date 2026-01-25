@@ -4,12 +4,17 @@
 #include "usbh_hid.h"
 #include "usb_host.h"
 #include "usbd_hid.h"
+#include "usbd_cdc.h"
 
 #define HID_CLASS_ID 0
 #define CDC_CLASS_ID 1
 
-extern USBD_HandleTypeDef hUsbDeviceFS;
+USBD_HandleTypeDef hUsbDeviceFS;
 static uint8_t last_report[8];
+extern "C" void USB_DEVICE_Init();
+
+uint8_t cdc_ep[3] = { CDC_IN_EP, CDC_OUT_EP, CDC_CMD_EP };
+uint8_t hid_ep[1] = { HID_EPIN_ADDR };
 
 static void build_hid_report(HID_KEYBD_Info_TypeDef *info, uint8_t *report)
 {
@@ -43,7 +48,7 @@ extern "C" void USBH_HID_EventCallback(USBH_HandleTypeDef *phost)
     // Send HID report to PC if changed
     if (memcmp(report, last_report, 8) != 0)
     {
-        USBD_HID_SendReport(&hUsbDeviceFS, report, 8, HID_CLASS_ID);
+        //USBD_HID_SendReport(&hUsbDeviceFS, report, 8, HID_CLASS_ID);
         memcpy(last_report, report, 8);
     }
 
@@ -56,19 +61,51 @@ extern "C" void USBH_HID_EventCallback(USBH_HandleTypeDef *phost)
     //}
 }
 
-
-
-
-
 extern "C" void initialize()
 {
 }
 
 extern "C" void setup()
 {
+	USB_DEVICE_Init();
 	HAL_TIM_Base_Start_IT(&htim3);
 }
 
 extern "C" void loop()
 {
+}
+
+extern "C" void USB_DEVICE_Init()
+{
+	if (USBD_Init(&hUsbDeviceFS, &FS_Desc, DEVICE_FS) != USBD_OK)
+	{
+		Error_Handler();
+	}
+
+	// CDC
+	//if (USBD_CDC_RegisterInterface(&hUsbDeviceFS, &USBD_Interface_fops_FS) != USBD_OK)
+	//{
+	//	Error_Handler();
+	//}
+	if (USBD_RegisterClassComposite(&hUsbDeviceFS, &USBD_CDC, CLASS_TYPE_CDC, cdc_ep) != USBD_OK)
+	{
+		Error_Handler();
+	}
+
+	/*
+	// HID
+	if (USBD_HID_RegisterInterface(&hUsbDeviceFS, &USBD_HID_fops_FS) != USBD_OK)
+	{
+		Error_Handler();
+	}
+	if (USBD_RegisterClassComposite(&hUsbDeviceFS, &USBD_HID, CLASS_TYPE_HID, video_ep) != USBD_OK)
+	{
+		Error_Handler();
+	}
+
+*/
+	if (USBD_Start(&hUsbDeviceFS) != USBD_OK)
+	{
+		Error_Handler();
+	}
 }
