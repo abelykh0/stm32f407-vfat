@@ -84,7 +84,7 @@ extern "C" void loop()
 
 	if (receivedCDC)
 	{
-		receivedCDC = false;
+		//receivedCDC = false;
 
 		// --- Send HID ---
 		uint8_t report[8] = {0};
