@@ -5,6 +5,9 @@
 #include "usb_host.h"
 #include "usbd_hid.h"
 
+#define HID_CLASS_ID 0
+#define CDC_CLASS_ID 1
+
 extern USBD_HandleTypeDef hUsbDeviceFS;
 static uint8_t last_report[8];
 
@@ -40,7 +43,7 @@ extern "C" void USBH_HID_EventCallback(USBH_HandleTypeDef *phost)
     // Send HID report to PC if changed
     if (memcmp(report, last_report, 8) != 0)
     {
-        USBD_HID_SendReport(&hUsbDeviceFS, report, 8);
+        USBD_HID_SendReport(&hUsbDeviceFS, report, 8, HID_CLASS_ID);
         memcpy(last_report, report, 8);
     }
 

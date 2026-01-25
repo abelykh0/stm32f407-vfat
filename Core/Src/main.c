@@ -20,8 +20,8 @@
 #include "main.h"
 #include "rtc.h"
 #include "tim.h"
-#include "usb_device.h"
 #include "usb_host.h"
+#include "usb_otg_fs.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -93,7 +93,6 @@ int main(void)
   /* Initialize all configured peripherals */
   MX_GPIO_Init();
   MX_RTC_Init();
-  MX_USB_DEVICE_Init();
   MX_USB_HOST_Init();
   MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
