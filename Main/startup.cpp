@@ -51,7 +51,7 @@ extern "C" void USBH_HID_EventCallback(USBH_HandleTypeDef *phost)
     // Send HID report to PC if changed
     if (memcmp(report, last_report, 8) != 0)
     {
-        //USBD_HID_SendReport(&hUsbDeviceFS, report, 8, HID_CLASS_ID);
+        USBD_HID_SendReport(&hUsbDeviceFS, report, 8, HID_CLASS_ID);
         memcpy(last_report, report, 8);
     }
 

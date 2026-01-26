@@ -46,10 +46,6 @@ extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /* Private function prototypes -----------------------------------------------*/
 /* USER CODE BEGIN PFP */
-void OTG_FS_IRQHandler(void)
-{
-	 HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
-}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -63,7 +59,10 @@ extern TIM_HandleTypeDef htim3;
 extern TIM_HandleTypeDef htim7;
 
 /* USER CODE BEGIN EV */
-
+void OTG_FS_IRQHandler(void)
+{
+	 HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
+}
 /* USER CODE END EV */
 
 /******************************************************************************/
