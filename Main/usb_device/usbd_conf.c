@@ -277,9 +277,9 @@ USBD_StatusTypeDef USBD_LL_Init(USBD_HandleTypeDef *pdev)
 	  // Max 0x140 words (1,280 bytes)
 	  HAL_PCDEx_SetRxFiFo(&hpcd_USB_OTG_FS, 0x60);    // 96 words - Rx FIFO
 	  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 0, 0x20); // 32 words - EP0 (Control)
-	  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x40); // 64 words - CDC IN (EP1)
+	  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 3, 0x40); // 64 words - CDC IN (EP1)
 	  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 2, 0x20); // 32 words - CDC OUT/IN (EP2)
-	  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 3, 0x10); // 16 words - HID IN (EP3)
+	  HAL_PCDEx_SetTxFiFo(&hpcd_USB_OTG_FS, 1, 0x10); // 16 words - HID IN (EP3)
 
 	  HAL_NVIC_SetPriority(OTG_FS_IRQn, 5, 0);
 	  HAL_NVIC_EnableIRQ(OTG_FS_IRQn);

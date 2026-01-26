@@ -90,6 +90,9 @@ extern "C" void loop()
 		uint8_t report[8] = {0};
 		report[2] = 0x04; // 'A' key
 		USBD_HID_SendReport(&hUsbDeviceFS, report, sizeof(report), HID_CLASS_ID);
+		HAL_Delay(10);
+		report[2] = 0x00;
+		USBD_HID_SendReport(&hUsbDeviceFS, report, sizeof(report), HID_CLASS_ID);
 	}
 
 	HAL_Delay(1000);  // wait 1 second

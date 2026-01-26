@@ -168,40 +168,41 @@ __ALIGN_BEGIN static uint8_t HID_MOUSE_ReportDesc[HID_MOUSE_REPORT_DESC_SIZE] __
 };
 */
 
-__ALIGN_BEGIN static uint8_t HID_Keyboard_ReportDesc[HID_KEYBOARD_REPORT_DESC_SIZE] __ALIGN_END =
+__ALIGN_BEGIN const uint8_t USBD_HID_KEYBOARD_ReportDesc[HID_KEYBOARD_REPORT_DESC_SIZE] __ALIGN_END =
 {
-    0x05, 0x01, // USAGE_PAGE (Generic Desktop)
-    0x09, 0x06, // USAGE (Keyboard)
-    0xa1, 0x01, // COLLECTION (Application)
-    0x05, 0x07, //   USAGE_PAGE (Keyboard)
-    0x19, 0xe0, //   USAGE_MINIMUM (Keyboard LeftControl)
-    0x29, 0xe7, //   USAGE_MAXIMUM (Keyboard Right GUI)
-    0x15, 0x00, //   LOGICAL_MINIMUM (0)
-    0x25, 0x01, //   LOGICAL_MAXIMUM (1)
-    0x75, 0x01, //   REPORT_SIZE (1)
-    0x95, 0x08, //   REPORT_COUNT (8)
-    0x81, 0x02, //   INPUT (Data,Var,Abs)
-    0x95, 0x01, //   REPORT_COUNT (1)
-    0x75, 0x08, //   REPORT_SIZE (8)
-    0x81, 0x03, //   INPUT (Cnst,Var,Abs)
-    0x95, 0x05, //   REPORT_COUNT (5)
-    0x75, 0x01, //   REPORT_SIZE (1)
-    0x05, 0x08, //   USAGE_PAGE (LEDs)
-    0x19, 0x01, //   USAGE_MINIMUM (Num Lock)
-    0x29, 0x05, //   USAGE_MAXIMUM (Kana)
-    0x91, 0x02, //   OUTPUT (Data,Var,Abs)
-    0x95, 0x01, //   REPORT_COUNT (1)
-    0x75, 0x03, //   REPORT_SIZE (3)
-    0x91, 0x03, //   OUTPUT (Cnst,Var,Abs)
-    0x95, 0x06, //   REPORT_COUNT (6)
-    0x75, 0x08, //   REPORT_SIZE (8)
-    0x15, 0x00, //   LOGICAL_MINIMUM (0)
-    0x25, 0x65, //   LOGICAL_MAXIMUM (101)
-    0x05, 0x07, //   USAGE_PAGE (Keyboard)
-    0x19, 0x00, //   USAGE_MINIMUM (Reserved)
-    0x29, 0x65, //   USAGE_MAXIMUM (Keyboard Application)
-    0x81, 0x00, //   INPUT (Data,Ary,Abs)
-    0xc0        // END_COLLECTION
+    // From p69 of http://www.usb.org/developers/devclass_docs/HID1_11.pdf
+    0x05, 0x01,     // Usage Page (Generic Desktop),
+    0x09, 0x06,     // Usage (Keyboard),
+    0xA1, 0x01,     // Collection (Application),
+    0x05, 0x07,         // Usage Page (Key Codes);
+    0x19, 0xE0,         // Usage Minimum (224),
+    0x29, 0xE7,         // Usage Maximum (231),
+    0x15, 0x00,         // Logical Minimum (0),
+    0x25, 0x01,         // Logical Maximum (1),
+    0x75, 0x01,         // Report Size (1),
+    0x95, 0x08,         // Report Count (8),
+    0x81, 0x02,         // Input (Data, Variable, Absolute), ;Modifier byte
+    0x95, 0x01,         // Report Count (1),
+    0x75, 0x08,         // Report Size (8),
+    0x81, 0x01,         // Input (Constant), ;Reserved byte
+    0x95, 0x05,         // Report Count (5),
+    0x75, 0x01,         // Report Size (1),
+    0x05, 0x08,         // Usage Page (Page# for LEDs),
+    0x19, 0x01,         // Usage Minimum (1),
+    0x29, 0x05,         // Usage Maximum (5),
+    0x91, 0x02,         // Output (Data, Variable, Absolute), ;LED report
+    0x95, 0x01,         // Report Count (1),
+    0x75, 0x03,         // Report Size (3),
+    0x91, 0x01,         // Output (Constant), ;LED report padding
+    0x95, 0x06,         // Report Count (6),
+    0x75, 0x08,         // Report Size (8),
+    0x15, 0x00,         // Logical Minimum (0),
+    0x25, 0x65,         // Logical Maximum(101),
+    0x05, 0x07,         // Usage Page (Key Codes),
+    0x19, 0x00,         // Usage Minimum (0),
+    0x29, 0x65,         // Usage Maximum (101),
+    0x81, 0x00,         // Input (Data, Array), ;Key arrays (6 bytes)
+    0xC0            // End Collection
 };
 
 static uint8_t HIDInEpAdd = HID_EPIN_ADDR;
@@ -358,7 +359,7 @@ static uint8_t USBD_HID_Setup(USBD_HandleTypeDef *pdev, USBD_SetupReqTypedef *re
           if ((req->wValue >> 8) == HID_REPORT_DESC)
           {
             len = MIN(HID_KEYBOARD_REPORT_DESC_SIZE, req->wLength);
-            pbuf = HID_Keyboard_ReportDesc;
+            pbuf = (uint8_t*)USBD_HID_KEYBOARD_ReportDesc;
           }
           else if ((req->wValue >> 8) == HID_DESCRIPTOR_TYPE)
           {
