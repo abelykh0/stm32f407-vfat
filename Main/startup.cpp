@@ -12,9 +12,12 @@
 #define HID_CLASS_ID 1
 
 USBD_HandleTypeDef hUsbDeviceFS;
-static uint8_t last_report[8];
 static bool receivedCDC = false;
 extern "C" void USB_DEVICE_Init();
+
+static HID_KEYBD_Info_TypeDef last_info;
+static uint8_t last_report[8];
+static bool receivedKey = false;
 
 uint8_t cdc_ep[3] = { CDC_IN_EP, CDC_OUT_EP, CDC_CMD_EP };
 uint8_t hid_ep[1] = { HID_EPIN_ADDR };
@@ -39,7 +42,7 @@ static void build_hid_report(HID_KEYBD_Info_TypeDef *info, uint8_t *report)
 
 extern "C" void USBH_HID_EventCallback(USBH_HandleTypeDef *phost)
 {
-    HID_KEYBD_Info_TypeDef *info = USBH_HID_GetKeybdInfo(phost);
+    HID_KEYBD_Info_TypeDef* info = USBH_HID_GetKeybdInfo(phost);
     if (info == nullptr)
     {
     	return;
@@ -51,17 +54,10 @@ extern "C" void USBH_HID_EventCallback(USBH_HandleTypeDef *phost)
     // Send HID report to PC if changed
     if (memcmp(report, last_report, 8) != 0)
     {
-        USBD_HID_SendReport(&hUsbDeviceFS, report, 8, HID_CLASS_ID);
         memcpy(last_report, report, 8);
+        last_info = *info;
+        receivedKey = true;
     }
-
-    // Send key text to CDC
-    //int len = keycode_to_text(info, cdc_buf, sizeof(cdc_buf));
-    //char cdc_buf[32];
-    //if (len > 0)
-    //{
-    //    while(CDC_Transmit_FS((uint8_t*)cdc_buf, len) == USBD_BUSY);
-    //}
 }
 
 extern "C" void initialize()
@@ -76,26 +72,32 @@ extern "C" void setup()
 
 extern "C" void loop()
 {
-	if (hUsbDeviceFS.dev_state == USBD_STATE_CONFIGURED)
+	if (receivedKey)
 	{
-		const char msg[] = "Hello\n";
-		CDC_Transmit_FS((uint8_t*)msg, sizeof(msg)-1);  // send "Hello\r"
+		USBD_HID_HandleTypeDef* hhid = (USBD_HID_HandleTypeDef*)hUsbDeviceFS.pClassDataCmsit[HID_CLASS_ID];
+		if (hhid->state != USBD_HID_IDLE)
+		{
+			return;
+		}
+
+		receivedKey = false;
+
+		// Send report to HID keyboard
+        USBD_HID_SendReport(&hUsbDeviceFS, last_report, 8, HID_CLASS_ID);
+    	HAL_Delay(5);
+
+		// Send key text to CDC
+		char cdc_buf[32];
+		cdc_buf[0] = USBH_HID_GetASCIICode(&last_info);
+		int len = 1;
+		//int len = keycode_to_text(info, cdc_buf, sizeof(cdc_buf));
+		if (len > 0)
+		{
+			CDC_Transmit_FS((uint8_t*)cdc_buf, len);
+		}
 	}
 
-	if (receivedCDC)
-	{
-		//receivedCDC = false;
-
-		// --- Send HID ---
-		uint8_t report[8] = {0};
-		report[2] = 0x04; // 'A' key
-		USBD_HID_SendReport(&hUsbDeviceFS, report, sizeof(report), HID_CLASS_ID);
-		HAL_Delay(10);
-		report[2] = 0x00;
-		USBD_HID_SendReport(&hUsbDeviceFS, report, sizeof(report), HID_CLASS_ID);
-	}
-
-	HAL_Delay(1000);  // wait 1 second
+	//HAL_Delay(1000);
 }
 
 extern "C" void OnCdcReceive(uint8_t* Buf, uint32_t Len)
