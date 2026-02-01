@@ -10,14 +10,19 @@
 
 #define CDC_CLASS_ID 0
 #define HID_CLASS_ID 1
+#define HID_REPORT_TYPE_OUTPUT  0x02
 
 USBD_HandleTypeDef hUsbDeviceFS;
 static bool receivedCDC = false;
 extern "C" void USB_DEVICE_Init();
 
+extern USBH_HandleTypeDef hUsbHostHS;
 static HID_KEYBD_Info_TypeDef last_info;
 static uint8_t last_report[8];
 static bool receivedKey = false;
+
+bool ledNeedsUpdating = false;
+uint8_t ledStatus;
 
 uint8_t cdc_ep[3] = { CDC_IN_EP, CDC_OUT_EP, CDC_CMD_EP };
 uint8_t hid_ep[1] = { HID_EPIN_ADDR };
@@ -94,6 +99,14 @@ extern "C" void loop()
 		if (len > 0)
 		{
 			CDC_Transmit_FS((uint8_t*)cdc_buf, len);
+		}
+	}
+
+	if (ledNeedsUpdating)
+	{
+		if (USBH_HID_SetReport(&hUsbHostHS, HID_REPORT_TYPE_OUTPUT, 0, &ledStatus, 1) == USBH_OK)
+		{
+			ledNeedsUpdating = false;
 		}
 	}
 

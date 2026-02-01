@@ -1,6 +1,7 @@
 #include "usbd_hid.h"
 #include "usbd_ctlreq.h"
 #include "usbh_hid.h"
+#include "stdbool.h"
 
 static uint8_t USBD_HID_Init(USBD_HandleTypeDef *pdev, uint8_t cfgidx);
 static uint8_t USBD_HID_DeInit(USBD_HandleTypeDef *pdev, uint8_t cfgidx);
@@ -13,16 +14,18 @@ static uint8_t *USBD_HID_GetOtherSpeedCfgDesc(uint16_t *length);
 static uint8_t *USBD_HID_GetDeviceQualifierDesc(uint16_t *length);
 #endif /* USE_USBD_COMPOSITE  */
 
-#define HID_REPORT_TYPE_OUTPUT  0x02
-
-extern USBH_HandleTypeDef hUsbHostHS;
 static uint8_t hid_ep0_out_buf[1];
+extern bool ledNeedsUpdating;
+extern uint8_t ledStatus;
 
 static uint8_t USBD_HID_EP0_RxReady(USBD_HandleTypeDef *pdev)
 {
-	// Forward to the real keyboard
 	uint8_t led_state = hid_ep0_out_buf[0];
-	USBH_HID_SetReport(&hUsbHostHS, HID_REPORT_TYPE_OUTPUT, 0, &led_state, 1);
+	if (ledStatus != led_state)
+	{
+		ledStatus = led_state;
+		ledNeedsUpdating = true;
+	}
 
 	USBD_CtlSendStatus(pdev);
     return USBD_OK;
@@ -355,25 +358,6 @@ static uint8_t USBD_HID_Setup(USBD_HandleTypeDef *pdev, USBD_SetupReqTypedef *re
 			// see USBD_HID_EP0_RxReady
 			break;
 
-        case USBD_HID_REQ_GET_REPORT:
-        {
-            uint8_t report_type = (req->wValue >> 8) & 0xFF;
-            uint8_t report_id = req->wValue & 0xFF;
-
-            if (report_type == HID_REPORT_TYPE_OUTPUT && report_id == 0)
-            {
-                // Windows is asking for current LED status
-                // Send back the last LED state we received
-                (void)USBD_CtlSendData(pdev, hid_ep0_out_buf, 1);
-            }
-            else
-            {
-                // For other report types, send default/empty response
-                uint8_t default_report = 0;
-                (void)USBD_CtlSendData(pdev, &default_report, 1);
-            }
-            break;
-        }
         default:
           USBD_CtlError(pdev, req);
           ret = USBD_FAIL;
